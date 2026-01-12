@@ -1,6 +1,14 @@
-runtime: python39
-entrypoint: python src/server.py
+runtime: python311
+
+entrypoint: gunicorn -b :8080 src.server:app
+
+instance_class: B2  # Usa B2 para más memoria
+
+basic_scaling:
+  max_instances: 2  # Ajusta según sea necesario
+  idle_timeout: 10m  # Mantiene instancias activas por 10 minutos
 
 handlers:
 - url: /.*
   script: auto
+

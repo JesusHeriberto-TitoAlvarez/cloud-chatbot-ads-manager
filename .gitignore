@@ -1,23 +1,27 @@
-# Ignorar archivos sensibles
+# Secrets / credentials
 .env
-config/.env
+Credentials*.json
 
-# Ignorar archivos de caché de Python
+# Sensitive configs
+google-ads.yaml
+
+# Data exports / backups
+firestore_exports/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Python cache
 __pycache__/
 *.pyc
 *.pyo
 
 # Ignorar entornos virtuales
-venv/
+env/
 .venv/
 
-# Ignorar archivos de dependencias temporales
-*.log
-.DS_Store
-
-# Ignorar archivos de configuración específicos
-.gcloudignore
-config/app.yaml
-
-# Ignorar archivos de compilación (si en el futuro usare Docker)
-docker-compose.override.yml
+# Runtime data / conversations
+src/data/conversations/
+*.json
