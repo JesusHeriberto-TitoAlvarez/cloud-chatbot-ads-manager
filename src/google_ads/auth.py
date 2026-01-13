@@ -1,8 +1,20 @@
+"""
+Valida la conexion y autenticacion con la API de Google Ads.
+
+Requiere un google-ads.yaml configurado correctamente. El script carga el
+cliente y prueba acceso a CustomerService para confirmar la conexion.
+"""
+
 from google.ads.googleads.client import GoogleAdsClient
 from google.ads.googleads.errors import GoogleAdsException
 
+
 def verify_google_ads_api():
-    """Verifica si la conexión con la API de Google Ads es válida."""
+    """Verifica la conexion con la API de Google Ads e imprime el estado.
+
+    Carga el cliente desde google-ads.yaml y prueba acceso a CustomerService.
+    No requiere customer_id; solo obtiene el servicio para validar conexion.
+    """
     try:
         # Cargar la configuración de autenticación desde google-ads.yaml
         client = GoogleAdsClient.load_from_storage("google-ads.yaml")
@@ -16,7 +28,9 @@ def verify_google_ads_api():
 
     except GoogleAdsException as ex:
         print(f"❌ Error en autenticación con Google Ads: {ex}")
+        # Recorremos errores para un diagnostico detallado.
         for error in ex.failure.errors:
+            # authorization_error indica la causa de autorizacion fallida.
             print(f"🔹 Código de error: {error.error_code.authorization_error}")
             print(f"🔹 Mensaje: {error.message}")
     except Exception as e:
@@ -25,6 +39,5 @@ def verify_google_ads_api():
 # Ejecutar la prueba de conexión sin depender de clientes existentes
 verify_google_ads_api()
 
-'''
-python src\google_ads\auth.py
-'''
+# Ejecucion:
+# python src\google_ads\auth.py
