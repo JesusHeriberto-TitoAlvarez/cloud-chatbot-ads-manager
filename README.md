@@ -35,25 +35,24 @@ Infraestructura operativa en GCP (configurada externamente, no incluida en el re
 - Firestore (persistencia del historial).
 
 ## Estructura del proyecto
-```
+
+```text
 / (raíz)
-+- src/                      # Código fuente principal
-�  +- server.py              # App Flask y rutas base
-�  +- routes.py              # Webhook de WhatsApp
-�  +- config.py              # Configuración y variables de entorno
-�  +- chatbot.py             # Orquestación de respuestas
-�  +- data/                  # Persistencia (Firestore / local) y conectores
-�  +- services/              # Lógica de intenciones, agentes y respuestas
-�  +- google_ads/            # Scripts y helpers de Google Ads
-�  +- google_sheets/         # Monitores de Google Sheets
-+- app.yaml                  # Config App Engine
-+- app-monitors.yaml         # Config App Engine para monitores
-+- requirements.txt          # Dependencias Python
-+- Dockerfile                # Contenedor (si aplica)
-+- start_monitors.sh         # Script de arranque de monitores
-+- google-ads.yaml           # Configuración SDK Google Ads (sin secretos en README)
-+- .env                      # Variables de entorno (no versionar)
-+- Credentials*.json         # Credenciales de servicios (no versionar)
+├─ src/                      # Código fuente principal
+│  ├─ server.py               # App Flask y rutas base
+│  ├─ routes.py               # Webhook de WhatsApp
+│  ├─ config.py               # Configuración y variables de entorno
+│  ├─ chatbot.py              # Orquestación de respuestas
+│  ├─ data/                   # Persistencia (Firestore / local)
+│  ├─ services/               # Lógica de intenciones, agentes y respuestas
+│  ├─ google_ads/             # Scripts y helpers de Google Ads
+│  └─ google_sheets/          # Monitores y conectores de Google Sheets
+├─ app.yaml                   # Config App Engine
+├─ app-monitors.yaml          # Config App Engine para monitores
+├─ requirements.txt           # Dependencias Python
+├─ Dockerfile                 # Contenedor (si aplica)
+├─ start_monitors.sh          # Script de arranque de monitores
+└─ google-ads.yaml            # Config SDK Google Ads (sin secretos)
 ```
 
 ## Requisitos previos
@@ -64,7 +63,7 @@ Infraestructura operativa en GCP (configurada externamente, no incluida en el re
 - Acceso aprobado a Google Ads API (restringida; requiere aprobaci�n previa).
 - Acceso a WhatsApp Business API (Meta) y sus credenciales.
 
-## Configuraci�n (variables de entorno y credenciales, sin exponer secretos)
+## Configuración (variables de entorno y credenciales, sin exponer secretos)
 ### Variables de entorno
 Crea un archivo `.env` con las siguientes variables (no las publiques):
 
@@ -100,7 +99,7 @@ pip install -r requirements.txt
 python src/server.py
 ```
 
-Opcional: iniciar monitores de Google Sheets (si est�n configurados):
+Opcional: iniciar monitores de Google Sheets (si están configurados):
 
 ```bash
 ./start_monitors.sh
