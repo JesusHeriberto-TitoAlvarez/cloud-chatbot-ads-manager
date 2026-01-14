@@ -23,10 +23,10 @@ Flujo principal (aplicación):
 3. Si el usuario no completó datos de campaña, se activa el agente que pregunta y completa campos en Google Sheets.
 4. Si ya hay datos suficientes, se responde con intenciones predefinidas o con OpenAI según el caso.
 5. Monitores de Google Sheets detectan estados y ejecutan scripts:
-   - `incomplete` ? crea campaña en Google Ads.
-   - `campaign processing` ? recupera y guarda detalles de campaña.
-   - `campaign ready` ? crea anuncios/grupos y actualiza estado.
-   - `ad processing` ? consulta grupos de anuncios y actualiza la hoja.
+   - `incomplete`  crea campaña en Google Ads.
+   - `campaign processing`  recupera y guarda detalles de campaña.
+   - `campaign ready`  crea anuncios/grupos y actualiza estado.
+   - `ad processing`  consulta grupos de anuncios y actualiza la hoja.
 
 Infraestructura operativa en GCP (configurada externamente, no incluida en el repo):
 - Cloud Run (ejecución del servicio).
@@ -38,7 +38,7 @@ Infraestructura operativa en GCP (configurada externamente, no incluida en el re
 
 ```text
 / (raíz)
-├─ src/                      # Código fuente principal
+├─ src/                       # Código fuente principal
 │  ├─ server.py               # App Flask y rutas base
 │  ├─ routes.py               # Webhook de WhatsApp
 │  ├─ config.py               # Configuración y variables de entorno
