@@ -1,49 +1,39 @@
-﻿"""
-Script que revisa Google Sheets en modo one-shot, valida filas con "Campaign Ready",
-ejecuta add_ad_to_campaign.py y actualiza el estado a "Ad Processing".
-
-Se ejecuta directamente via __main__.
-"""
-
-import os
+﻿import subprocess
+# Script de monitoreo one-shot para preparar ads desde Google Sheets
 import sys
-import subprocess
+import os
 import random
 import string
 
-# Permite ejecutar el script directamente sin empaquetar el modulo.
+# Agregar el directorio de google_ads al path para importar sus módulos
+# Permite importar modulos locales sin instalar paquete
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'google_ads')))
 
 from google_sheets_manager import get_google_sheets_data, update_google_sheets_entry
 
-
+# Utilidad para generar sufijos unicos de ad group
 def generate_random_suffix(length=3):
-    """Genera un sufijo aleatorio de letras mayusculas."""
+    """Genera un sufijo aleatorio de letras mayúsculas."""
     return ''.join(random.choices(string.ascii_uppercase, k=length))
 
-
+# Flujo principal de monitoreo y ejecucion
 def monitor_google_sheets():
-    """Monitorea Google Sheets y ejecuta add_ad_to_campaign.py si se cumplen los requisitos.
-
-    Side effects:
-        - Imprime en consola.
-        - Llama a subprocess para crear anuncios.
-        - Actualiza Google Sheets si la ejecucion fue exitosa.
-    """
+    """Monitorea Google Sheets y ejecuta add_ad_to_campaign.py si se cumplen los requisitos."""
     print("\U0001F4CC Checking Google Sheets for campaign readiness updates...")
 
-    # Carga de data
+    # Obtener los datos de la hoja de Google Sheets
     df = get_google_sheets_data()
 
-    # Normalizacion de columnas
+    # Convertir nombres de columnas a minúsculas y eliminar espacios adicionales
     df.columns = df.columns.str.lower().str.strip()
 
-    # Depuracion: ver cuantas filas se han recuperado y mostrar primeros valores
+    # Depuración: Ver cuántas filas se han recuperado y mostrar los primeros valores
     print(f"Total rows fetched: {len(df)}")
     print(df[["campaign name", "validation status"]])  # Muestra los primeros valores
 
+    # Iterar filas para validar y procesar candidatas
     for index, row in df.iterrows():
-        # +2 por encabezado y ajuste de indices de Google Sheets
+        # Ajustar el número de fila para coincidir con Google Sheets
         google_sheets_row = index + 2
 
         # Verificar si Validation Status es 'Campaign Ready'
@@ -60,17 +50,8 @@ def monitor_google_sheets():
         keywords = str(row.get("keywords", "")).strip()
         campaign_status = str(row.get("campaign status", "")).strip()
 
-        # required_fields usa nombres normalizados (df.columns ya esta en lower/strip)
-        required_fields = [
-            "customer id",
-            "campaign id",
-            "campaign name",
-            "titles",
-            "descriptions",
-            "keywords",
-            "assigned budget",
-            "campaign status",
-        ]
+        # Validacion de campos obligatorios antes de ejecutar el script externo
+        required_fields = ["customer id", "campaign id", "campaign name", "titles", "descriptions", "keywords", "assigned budget", "campaign status"]
         missing_fields = [field for field in required_fields if row.get(field) in [None, ""]]
 
         if missing_fields:
@@ -88,10 +69,10 @@ def monitor_google_sheets():
         if not campaign_name:
             print(f"Skipping row {google_sheets_row} - Campaign Name is missing.")
             continue
-
+        
         ad_group_name = f"{campaign_name}_{generate_random_suffix()}"
 
-        print("Executing add_ad_to_campaign.py with:")
+        print(f"Executing add_ad_to_campaign.py with:")
         print(f"  - Customer ID: '{customer_id}'")
         print(f"  - Campaign ID: '{campaign_id}'")
         print(f"  - Ad Group Name: '{ad_group_name}'")
@@ -108,7 +89,7 @@ def monitor_google_sheets():
             print(f"\u274C Error: Assigned Budget is not a valid number for Campaign: {campaign_name}")
             continue
 
-        # Separador actual: '|'
+        # ✅ Solo cambiamos el separador de ',' a '|'
         titles_list = [t.strip() for t in titles.split("|") if t.strip()]
         descriptions_list = [d.strip() for d in descriptions.split("|") if d.strip()]
         keywords_list = [k.strip() for k in keywords.split("|") if k.strip()]
@@ -129,6 +110,7 @@ def monitor_google_sheets():
         print(f"All conditions met. Creating Ad Group: {ad_group_name} for Campaign: {campaign_name}")
         print("Running add_ad_to_campaign.py...")
 
+        # Ejecucion de add_ad_to_campaign.py con los parametros originales
         result = subprocess.run([
             "python", "src/google_ads/add_ad_to_campaign.py",
             "-c", customer_id,
@@ -143,6 +125,7 @@ def monitor_google_sheets():
         print(result.stdout)
         print(result.stderr)
 
+        # Solo actualizar Sheets cuando la ejecucion fue exitosa
         if result.returncode == 0:
             update_google_sheets_entry(campaign_name, "Validation Status", "Ad Processing")
             print(f"Google Sheets actualizado: 'Validation Status' cambiado a 'Ad Processing' para Campaign Name {campaign_name}")
@@ -150,11 +133,5 @@ def monitor_google_sheets():
         else:
             print(f"\u274C Error executing add_ad_to_campaign.py for Campaign ID {campaign_id}")
 
-
 if __name__ == "__main__":
     monitor_google_sheets()
-
-
-# Ejecucion:
-# python src/google_sheets/monitor_google_sheets_campaign_ready.py
-# LEGACY (deprecated): versiones anteriores (incluyendo modo loop) disponibles en el historial de Git.

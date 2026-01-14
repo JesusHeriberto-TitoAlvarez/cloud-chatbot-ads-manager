@@ -1,3 +1,12 @@
+﻿"""
+Agente de creacion de campanas para Google Ads basado en conversacion.
+
+Este modulo extrae datos desde el historial del usuario (Firestore) y usa Google
+Sheets como estado persistente para completar los campos de la campana.
+Retorna un dict con mensaje_respuesta/finalizado para el caller.
+No crea campanas directamente; solo recopila y persiste informacion.
+"""
+
 import json
 
 from src.config import (
@@ -11,8 +20,8 @@ from src.data.chatbot_sheet_connector import (
 )
 from src.data.firestore_storage import leer_historial
 
-# ==== CONFIGURACIÓN DE COLUMNAS EN GOOGLE SHEETS ====
-# Mantienen exactamente tu diseño actual de la hoja
+# === CONFIGURACION DE COLUMNAS ===
+# Mantienen exactamente el diseño actual de la hoja
 COLUMNA_CAMPAIGN_NAME = "Campaign Name"
 COLUMNA_TITLES = "Titles"
 COLUMNA_DESCRIPTIONS = "Descriptions"
@@ -20,10 +29,20 @@ COLUMNA_KEYWORDS = "Keywords"
 COLUMNA_REQUESTED_BUDGET = "Requested Budget"
 
 
+# === LECTURA Y VALIDACION DE DATOS ===
 def _leer_datos_usuario(phone_number: str) -> dict:
     """
     Lee de Google Sheets los campos relevantes para la campaña de este usuario.
-    No cambia nada, solo devuelve un dict con lo que hay actualmente.
+
+    Campos esperados:
+        - campaign_name
+        - titles (string con \n)
+        - descriptions (string con \n)
+        - keywords (string con ", ")
+        - requested_budget
+
+    Returns:
+        Dict con los valores actuales (strings o vacios si no hay dato).
     """
     return {
         "campaign_name": get_user_field(phone_number, COLUMNA_CAMPAIGN_NAME) or "",
@@ -33,6 +52,9 @@ def _leer_datos_usuario(phone_number: str) -> dict:
         "requested_budget": get_user_field(phone_number, COLUMNA_REQUESTED_BUDGET) or "",
     }
 
+
+# Funcion reservada/no usada: referencia una constante no definida en el modulo.
+# Se mantiene intacta para evitar cambios de runtime.
 def _marcar_validation_incomplete(phone_number: str) -> None:
     """
     Si la fila del usuario existe (o se crea al escribir), marca Validation Status = 'incomplete'
@@ -49,11 +71,11 @@ def usuario_necesita_agente(phone_number: str) -> bool:
     en Google Sheets para este número.
 
     Condición para considerar COMPLETO:
-    - Campaign Name lleno
-    - Titles no vacío
-    - Descriptions no vacío
-    - Keywords no vacío
-    - Requested Budget lleno
+        - Campaign Name lleno
+        - Titles no vacío
+        - Descriptions no vacío
+        - Keywords no vacío
+        - Requested Budget lleno
     """
     datos = _leer_datos_usuario(phone_number)
 
@@ -66,16 +88,22 @@ def usuario_necesita_agente(phone_number: str) -> bool:
     )
 
 
+# === PERSISTENCIA EN SHEETS ===
 def _guardar_datos_en_sheet(phone_number: str, datos: dict) -> None:
     """
-    Recibe un dict con posibles claves:
-    - campaign_name: str
-    - titles: list[str] o str
-    - descriptions: list[str] o str
-    - keywords: list[str] o str
-    - requested_budget: str
+    Persiste en Google Sheets los datos provistos por el agente.
 
-    y actualiza SOLO las columnas que vengan con contenido.
+    Admite:
+        - campaign_name: str
+        - titles: list[str] o str
+        - descriptions: list[str] o str
+        - keywords: list[str] o str
+        - requested_budget: str
+
+    Notas importantes:
+        - Titles/Descriptions se guardan con "\n".
+        - Keywords se guardan con ", ".
+        - Solo se escriben campos con contenido.
     """
     # Nombre de campaña / empresa
     campaign_name = datos.get("campaign_name")
@@ -135,16 +163,16 @@ def _guardar_datos_en_sheet(phone_number: str, datos: dict) -> None:
         )
 
 
-
+# === CONSTRUCCION DE PROMPT ===
 def _construir_prompt_agente(mensaje_usuario: str, phone_number: str) -> list:
     """
-    Construye el prompt (lista de mensajes) para enviar al modelo avanzado.
+    Construye el prompt (lista de mensajes) para el modelo del agente.
+
     Incluye:
-    - Rol del agente
-    - Reglas de conversación
-    - Estado actual de los datos en Sheets
-    - Historial reciente de conversación
-    - Último mensaje del usuario
+        - Rol del agente y reglas de conversación.
+        - Resumen de datos actuales en Sheets (evita repetir preguntas).
+        - Historial reciente (solo ultimos N mensajes por contexto corto).
+        - Último mensaje del usuario.
     """
     datos_actuales = _leer_datos_usuario(phone_number)
 
@@ -164,7 +192,8 @@ def _construir_prompt_agente(mensaje_usuario: str, phone_number: str) -> list:
         m for m in historial
         if isinstance(m, dict) and "role" in m and "content" in m
     ]
-    ultimos_mensajes = historial_filtrado[-8:]  # no hace falta más
+    # Contexto corto: no hace falta mas de los ultimos N mensajes
+    ultimos_mensajes = historial_filtrado[-8:]
 
     mensaje_system = (
         "Eres un agente especializado en crear campañas de Google Ads para pequeños negocios en Bolivia.\n"
@@ -207,7 +236,7 @@ def _construir_prompt_agente(mensaje_usuario: str, phone_number: str) -> list:
         '    "titles": ["Titulo1|Titulo2|...|Titulo15"],\n'
         '    "descriptions": ["Descripcion1|Descripcion2|Descripcion3|Descripcion4"],\n'
         '    "keywords": ["keyword1|keyword2|...|keyword10"],\n'
-        '    "requested_budget": "(obligatorio en estado finalizado, puede estar vacío mientras está en proceso) presupuesto diario simbolico como texto, no se cobrara nada (ej: \\"20 Bs por día\\")"\n'
+        '    "requested_budget": "(obligatorio en estado finalizado, puede estar vacío mientras está en proceso) presupuesto diario simbolico como texto, no se cobrara nada (ej: \\\"20 Bs por día\\\")"\n'
         "  },\n"
         '  "estado": "en_proceso"\n'
         "}\n\n"
@@ -232,7 +261,6 @@ def _construir_prompt_agente(mensaje_usuario: str, phone_number: str) -> list:
         "Ahora recibirás el historial reciente y el último mensaje del usuario."
     )
 
-
     mensajes = [{"role": "system", "content": mensaje_system}]
 
     # Añadimos historial reciente (si existe)
@@ -244,17 +272,25 @@ def _construir_prompt_agente(mensaje_usuario: str, phone_number: str) -> list:
     return mensajes
 
 
+# === EJECUCION DEL AGENTE ===
 def ejecutar_agente_creacion_campana(mensaje_usuario: str, phone_number: str) -> dict:
     """
     Punto de entrada del agente de creación de campaña.
 
-    Retorna un dict con esta forma:
-    {
-        "mensaje_respuesta": "texto para enviar al usuario",
-        "finalizado": True/False
-    }
+    Returns:
+        Dict con la forma:
+            {
+                "mensaje_respuesta": "texto para enviar al usuario",
+                "finalizado": True/False
+            }
 
-    Efecto secundario: actualiza Google Sheets con cualquier dato nuevo que el modelo proporcione.
+    Side effects:
+        - Llama a OpenAI y fuerza JSON estricto.
+        - Actualiza Google Sheets con datos nuevos.
+        - Imprime estado y errores con prefijo [AGENTE CAMPANA].
+
+    Notas importantes:
+        - El mensaje_respuesta se sobreescribe cuando el estado es finalizado.
     """
 
     mensajes = _construir_prompt_agente(mensaje_usuario, phone_number)
@@ -298,18 +334,12 @@ def ejecutar_agente_creacion_campana(mensaje_usuario: str, phone_number: str) ->
                     "Gracias por la información. Cuentame un poco más sobre tu negocio, por favor."
                 )
 
-
-
-
-
-        # === MARCADOR TEMPORAL PARA PRUEBAS ===
-        #MARCADOR_TEMP = " ¤"
-        # ======================================
-
-        #return {
-        #    "mensaje_respuesta": (mensaje_respuesta + MARCADOR_TEMP),
-        #    "finalizado": finalizado,
-        #}
+        # === DEBUG/TEST MARKER (disabled) ===
+        # MARCADOR_TEMP = " ¤"
+        # return {
+        #     "mensaje_respuesta": (mensaje_respuesta + MARCADOR_TEMP),
+        #     "finalizado": finalizado,
+        # }
 
         return {
             "mensaje_respuesta": mensaje_respuesta,
@@ -336,10 +366,3 @@ def ejecutar_agente_creacion_campana(mensaje_usuario: str, phone_number: str) ->
             ),
             "finalizado": False,
         }
-
-
-
-
-
-
-
