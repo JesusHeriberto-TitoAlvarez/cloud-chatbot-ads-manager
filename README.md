@@ -2,7 +2,7 @@
 
 Backend desarrollado en Flask que recibe mensajes de WhatsApp vía webhooks e integra Google Ads, Google Sheets y Firestore para gestionar flujos de chatbot, registro de usuarios y estados operativos de campañas.
 
-## Prop�sito del proyecto
+## Propósito del proyecto
 
 Automatizar la atención y el seguimiento de usuarios interesados en publicidad digital, reduciendo fricción operativa y dependencia de procesos manuales.  
 El sistema centraliza el control de flujos para asegurar coherencia, trazabilidad y continuidad en cada interacción, facilitando la ejecución de campañas y garantizando una experiencia uniforme tanto para el usuario final como para el equipo operativo.
